@@ -24,6 +24,17 @@
     </div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
+    <script>
+        function downloadFile(filename, content) {
+        const link = document.createElement('a');
+        link.href = 'data:application/octet-stream;base64,' + content;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        }
+
+    </script>
 
 </body>
 

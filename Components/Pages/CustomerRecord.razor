@@ -1,0 +1,110 @@
+﻿@page "/CustomerRecord"
+@using BCafe.Data
+
+
+<h1>Customer Records</h1>
+<button class="btn btn-primary" @onclick="ShowAddCustomerModal">Add Customer</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Phone Number</th>
+            @* <th>Order Made</th> *@
+            <th>Add Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var customer in customers)
+        {
+            <tr>
+                <td>@customer.Id</td>
+                <td>@customer.Name</td>
+                <td>@customer.PhoneNumber</td>
+                @* <td>@customer.OrderMade</td> *@
+                <td>@customer.AddDate.ToString("yyyy-MM-dd")</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="() => EditCustomer(customer)">Edit</button>
+                    <button class="btn btn-danger" @onclick="() => DeleteCustomer(customer.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (showModal)
+{
+    <div class="modal" style="display:block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="close" @onclick="CloseModal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control mb-2" placeholder="Name" @bind="editingCustomer.Name" />
+                    <input type="text" class="form-control" placeholder="Phone Number" @bind="editingCustomer.PhoneNumber" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SaveCustomer">Save</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Customer> customers = new();
+    private bool showModal = false;
+    private Customer editingCustomer = new();
+    private string modalTitle = "Add Customer";
+
+    protected override void OnInitialized()
+    {
+        customers = CustomersService.GetAll();
+    }
+
+    private void ShowAddCustomerModal()
+    {
+        editingCustomer = new Customer();
+        modalTitle = "Add Customer";
+        showModal = true;
+    }
+
+    private void EditCustomer(Customer customer)
+    {
+        editingCustomer = customer;
+        modalTitle = "Edit Customer";
+        showModal = true;
+    }
+
+    private void SaveCustomer()
+    {
+        if (editingCustomer.Id == 0)
+        {
+            CustomersService.AddCustomer(editingCustomer);
+        }
+        else
+        {
+            CustomersService.UpdateCustomer(editingCustomer);
+        }
+        customers = CustomersService.GetAll();
+        CloseModal();
+    }
+
+    private void DeleteCustomer(int customerId)
+    {
+        CustomersService.DeleteCustomer(customerId);
+        customers = CustomersService.GetAll();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}

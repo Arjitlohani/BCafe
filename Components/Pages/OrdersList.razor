@@ -1,0 +1,395 @@
+﻿﻿@using BCafe.Data
+@page "/OrdersList"
+@inject IJSRuntime JSRuntime
+@using iTextSharp.text;
+@using iTextSharp.text.pdf;
+@using System.IO;
+
+<h1>Orders</h1>
+<button class="btn btn-primary" @onclick="ShowAddOrderModal">Add Order</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Coffee</th>
+            <th>Add-Ins</th>
+            <th>Coffee Price</th>
+            <th>Add-Ins Price</th>
+            <th>Total Price</th>
+            <th>Order Date</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in orders)
+        {
+            <tr>
+                <td>@order.Id</td>
+                <td>@order.Coffee</td>
+                <td>@order.AddIns</td>
+                <td>RS.@order.CoffeePrice</td>
+                <td>RS.@order.AddInsPrice</td>
+                <td>RS.@order.TotalPrice</td>
+                <td>@order.OrderDate.ToString("yyyy-MM-dd")</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="() => EditOrder(order)">Edit</button>
+                    <button class="btn btn-danger" @onclick="() => DeleteOrder(order.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (showModal)
+{
+    <div class="modal" style="display:block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="close" @onclick="CloseModal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    <input type="text" class="form-control mb-2" placeholder="Customer Phone Number" @bind="editingOrder.CustomerPhoneNumber" />
+
+                </div>
+
+                <!-- Select for Coffee Types -->
+                <p>Coffee Types</p>
+                <select class="form-control mb-2" @bind-value="selectedCoffeeType" @bind-value:event="onchange">
+                    <option value="">Select Coffee Type</option>
+                    @foreach (var coffee in coffees)
+                    {
+                        <option value="@coffee.Id.ToString()">@coffee.ProductName</option>
+                    }
+                </select>
+
+
+                <!-- Checkboxes for Add-Ins -->
+                <p> Addins</p>
+                @foreach (var addIn in addIns)
+                {
+                    <div class="form-check">
+
+                        <input type="checkbox" class="form-check-input"
+                               @onchange="(e) => HandleAddInSelection(addIn.Id, e)">
+                        <label class="form-check-label">@addIn.Name</label>
+                    </div>
+                }
+                <p>Coffee Price</p>
+                <input type="number" class="form-control mb-2" placeholder="CoffeePrice" @bind="editingOrder.CoffeePrice" />
+                <p> Addins price</p>
+                <input type="number" class="form-control mb-2" placeholder="AddInsPrice" @bind="editingOrder.AddInsPrice" />
+
+
+                <!-- Display Calculated Price -->
+                <p> Total Price</p>
+                <input type="number" class="form-control mb-2" placeholder="Total Price" @bind="editingOrder.TotalPrice" />
+
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SaveOrder">ORDER</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+}
+<button class="btn btn-primary" @onclick="OnGeneratePdfClicked">Generate Report</button>
+
+
+
+@code {
+    private List<Order> orders = new();
+    private bool showModal = false;
+    private Order editingOrder = new();
+    private string modalTitle = "Add Order";
+    private List<Coffee> coffees;
+    private List<AddIn> addIns;
+    private decimal totalPrice;
+    private string _selectedCoffeeType;
+    private List<Coffee> topCoffees;
+    private List<AddIn> topAddIns;
+
+    private string selectedCoffeeType
+    {
+        get => _selectedCoffeeType;
+        set
+        {
+            if (_selectedCoffeeType != value)
+            {
+                _selectedCoffeeType = value;
+                HandleCoffeeSelection();
+            }
+        }
+    }
+
+    private List<int> selectedAddInIds = new List<int>();
+    protected override void OnInitialized()
+    {
+        orders = OrderService.GetAllOrders();
+        coffees = CoffeeService.GetAll();
+        addIns = AddInsService.GetAll();
+    }
+
+    private void ShowAddOrderModal()
+    {
+        editingOrder = new Order();
+        modalTitle = "Add Order";
+        showModal = true;
+    }
+
+    private void EditOrder(Order order)
+    {
+        editingOrder = order;
+        modalTitle = "Edit Order";
+        showModal = true;
+    }
+
+    private void HandleCoffeeSelection()
+    {
+        if (int.TryParse(selectedCoffeeType, out int coffeeId))
+        {
+            var selectedCoffee = coffees.FirstOrDefault(c => c.Id == coffeeId);
+            if (selectedCoffee != null)
+            {
+                editingOrder.Coffee = selectedCoffee.ProductName;
+                editingOrder.CoffeePrice = selectedCoffee.Price;
+            }
+            else
+            {
+                editingOrder.CoffeePrice = 0;
+            }
+        }
+
+        UpdateOrderPrice();
+        StateHasChanged();
+    }
+    private void HandleAddInSelection(int addInId, ChangeEventArgs e)
+    {
+        if (bool.TryParse(e.Value.ToString(), out bool isSelected))
+        {
+            if (isSelected && !selectedAddInIds.Contains(addInId))
+            {
+                selectedAddInIds.Add(addInId);
+            }
+            else if (!isSelected && selectedAddInIds.Contains(addInId))
+            {
+                selectedAddInIds.Remove(addInId);
+            }
+
+            // Update the AddIns string based on the current selection
+            editingOrder.AddIns = string.Join(", ", selectedAddInIds.Select(id => addIns.FirstOrDefault(ai => ai.Id == id)?.Name));
+
+            UpdateOrderPrice();
+        }
+
+    }
+
+    private void UpdateOrderPrice()
+    {
+        // each addIn has a Price property
+        decimal addInsTotalPrice = selectedAddInIds
+            .Sum(id => addIns.FirstOrDefault(ai => ai.Id == id)?.Price ?? 0);
+
+        editingOrder.AddInsPrice = addInsTotalPrice;
+
+
+        //  have already set the coffee price
+        editingOrder.TotalPrice = editingOrder.CoffeePrice + addInsTotalPrice;
+    }
+
+
+    private void SaveOrder()
+    {
+        if (int.TryParse(selectedCoffeeType, out int coffeeId))
+        {
+            var selectedCoffee = coffees.FirstOrDefault(c => c.Id == coffeeId);
+            if (selectedCoffee != null)
+            {
+                editingOrder.Coffee = selectedCoffee.ProductName;
+                editingOrder.CoffeePrice = selectedCoffee.Price;
+            }
+        }
+        editingOrder.OrderDate = DateTime.Now;
+        if (editingOrder.Id == 0)
+        {
+            OrderService.AddOrder(editingOrder);
+        }
+        else
+        {
+            OrderService.UpdateOrder(editingOrder);
+        }
+        orders = OrderService.GetAllOrders();
+        CloseModal();
+        StateHasChanged();
+    }
+
+    private void DeleteOrder(int orderId)
+    {
+        OrderService.DeleteOrder(orderId);
+        orders = OrderService.GetAllOrders();
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        editingOrder.AddInsPrice = 0; // Reset the add-ins price
+        editingOrder.CoffeePrice = 0; // Reset the coffee price 
+        editingOrder.TotalPrice = 0; // Reset the total price
+        selectedAddInIds.Clear(); // Clear the selected add-ins list
+        StateHasChanged();
+
+    }
+    private void CalculateTopItems()
+    {
+        // Calculate the top coffees by counting orders for each type
+        topCoffees = CalculateTopCoffees();
+
+        // Calculate the top add-ins by counting how often each is ordered
+        topAddIns = CalculateTopAddIns();
+    }
+    private async void OnGeneratePdfClicked()
+    {
+        CalculateTopItems(); 
+
+        try
+        {
+            var pdfBytes = GeneratePdf(orders);
+            await JSRuntime.InvokeVoidAsync("downloadFile", "OrdersReport.pdf", Convert.ToBase64String(pdfBytes));
+            await JSRuntime.InvokeVoidAsync("alert", "Report successfully generated.");
+        }
+        catch (Exception )
+        {
+           
+            await JSRuntime.InvokeVoidAsync("alert", "Something went wrong while generating the report.");
+        }
+    
+    }
+
+    private List<Coffee> CalculateTopCoffees()
+    {
+        // Assuming you have a List<Order> orders available
+        var orders = OrderService.GetAllOrders();
+        var coffeeCounts = orders
+            .GroupBy(o => o.Coffee)
+            .Select(group => new Coffee
+                {
+                    ProductName = group.Key,
+                    TimesOrdered = group.Count()
+                })
+            .OrderByDescending(c => c.TimesOrdered)
+            .Take(5)
+            .ToList();
+
+        return coffeeCounts;
+    }
+
+    private List<AddIn> CalculateTopAddIns()
+    {
+        // Assuming AddIns is a comma-separated string in each order
+        var orders = OrderService.GetAllOrders();
+        var addInCounts = orders
+            .SelectMany(o => o.AddIns.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries))
+            .GroupBy(addIn => addIn)
+            .Select(group => new AddIn
+                {
+                    Name = group.Key,
+                    TimesOrdered = group.Count()
+                })
+            .OrderByDescending(ai => ai.TimesOrdered)
+            .Take(5)
+            .ToList();
+
+        return addInCounts;
+    }
+    
+    public byte[] GeneratePdf(List<Order> orders)
+    {
+        using (MemoryStream memoryStream = new MemoryStream())
+        {
+            Document document = new Document(PageSize.A4, 10, 10, 10, 10);
+            PdfWriter writer = PdfWriter.GetInstance(document, memoryStream);
+            document.Open();
+            document.Add(new Paragraph("Bislerium Cafe"));
+            document.Add(new Paragraph(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")));
+            document.Add(Chunk.NEWLINE); // Adds a blank line
+
+            PdfPTable table = new PdfPTable(7); // Adjust the number of columns to match your table
+
+            // Set the widths of each column
+            float[] columnWidths = new float[] { 1f, 2f, 2f, 1f, 1f, 1f, 1f };
+            table.SetWidths(columnWidths);
+            table.WidthPercentage = 100; // This makes the table take the full width of the page
+
+
+            // Add headers
+            table.AddCell("ID");
+            table.AddCell("Coffee");
+            table.AddCell("Add-Ins");
+            table.AddCell("Coffee Price");
+            table.AddCell("Add-Ins Price");
+            table.AddCell("Order Date");
+            table.AddCell("Total Price");
+            
+
+            // Add data rows
+            foreach (var order in orders)
+            {
+                table.AddCell(order.Id.ToString());
+                table.AddCell(order.Coffee);
+                table.AddCell(order.AddIns);
+                table.AddCell($"RS.{order.CoffeePrice}");
+                table.AddCell($"RS.{order.AddInsPrice}");
+                table.AddCell(order.OrderDate.ToString("yyyy-MM-dd"));
+                table.AddCell($"RS.{order.TotalPrice}");
+                
+            }
+            // Add the total revenue row
+            PdfPCell totalLabelCell = new PdfPCell(new Phrase("Total Revenue"));
+            totalLabelCell.Colspan = 6; // Span over 6 columns
+            totalLabelCell.HorizontalAlignment = PdfPCell.ALIGN_RIGHT;
+            table.AddCell(totalLabelCell);
+
+            PdfPCell totalValueCell = new PdfPCell(new Phrase($"RS.{orders.Sum(o => o.TotalPrice)}"));
+            table.AddCell(totalValueCell);
+            document.Add(table);
+            // Add top coffees section
+            document.Add(new Paragraph("Top 5 Coffees"));
+            document.Add(Chunk.NEWLINE);
+            PdfPTable topCoffeesTable = new PdfPTable(2);
+            foreach (var coffee in topCoffees)
+            {
+                topCoffeesTable.AddCell(coffee.ProductName);
+                topCoffeesTable.AddCell(coffee.TimesOrdered.ToString());
+            }
+            document.Add(topCoffeesTable);
+
+            // Add top add-ins section
+            document.Add(new Paragraph("Top 5 Add-Ins"));
+            document.Add(Chunk.NEWLINE);
+            PdfPTable topAddInsTable = new PdfPTable(2);
+            foreach (var addIn in topAddIns)
+            {
+                topAddInsTable.AddCell(addIn.Name);
+                topAddInsTable.AddCell(addIn.TimesOrdered.ToString());
+            }
+            document.Add(topAddInsTable);
+
+            document.Close();
+            return memoryStream.ToArray();
+        
+            document.Close();
+
+            return memoryStream.ToArray();
+        }
+    }
+}

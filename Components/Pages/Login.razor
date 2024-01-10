@@ -1,11 +1,16 @@
 ﻿@page "/login"
+
 @inject NavigationManager NavManager
 @using BCafe.Data
-<div class="login-body">
+
+<div class="login-body" >
     <div class="form-login">
         <form class="text-center" @onsubmit="LoginHandler">
-            <img class="mb-4" src="/appicon.png" alt="" height="72">
-            <h1 class="h3 mb-3 fw-normal">Please Login</h1>
+            <div>
+            <img class="mb-4" src="Image/appicon.png" alt="App Icon" height="150">
+
+            <h1 class="h3 mb-3 fw-normal">Bislerium Login</h1>
+            </div>
             @if (_showDefaultCredentials)
             {
                 <div class="alert alert-info" role="alert">
@@ -22,24 +27,26 @@
                 <input type="password" class="form-control password" @bind="_password" placeholder="Password" />
                 <label for="floatingPassword">Password</label>
             </div>
-            <!--@if (!string.IsNullOrEmpty(_errorMessage))
+            @if (!string.IsNullOrEmpty(_errorMessage))
             {
                 <AlertMessage Type="danger" Message="@_errorMessage" />
-            }-->
-            <button class="w-100 btn btn-lg btn-primary" type="submit">
-                <span class="oi oi-account-login"></span> Login
+            }
+
+                <button class="w-100 btn btn-lg btn-primary" type="submit">
+                    <span class="oi oi-account-login"></span> Login
             </button>
+            
         </form>
     </div>
 </div>
-
+            
 @code {
     [CascadingParameter]
     private GlobalState _globalState { get; set; }
     private bool _showDefaultCredentials { get; set; }
     private string _username { get; set; }
     private string _password { get; set; }
-    private string _errorMessage = "";
+    private string _errorMessage = "Invalid Username or Password";
 
     protected override void OnInitialized()
     {
@@ -62,7 +69,7 @@
             _globalState.CurrentUser = UsersService.Login(_username, _password);
             if (_globalState.CurrentUser != null)
             {
-                NavManager.NavigateTo("/orders");
+                NavManager.NavigateTo("/change-password");
             }
         }
         catch (Exception e)
