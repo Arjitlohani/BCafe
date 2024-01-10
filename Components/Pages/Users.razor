@@ -1,5 +1,7 @@
 ﻿@page "/users"
+@using BCafe.Components.Layout
 @using BCafe.Data;
+
 <nav class="navbar navbar-light bg-light justify-content-between">
     <h1 class="navbar-brand mb-0 h1">Users</h1>
     <button class="btn btn-primary" type="button" @onclick="OpenAddUserDialog">
@@ -53,9 +55,9 @@
             <label for="floatingPassword">Password</label>
         </div>
         <div class="form-check">
-            <input id="userRole" type="radio" class="form-check-input" name="role" value="@Role.User"
-                @onchange="RoleChangeHandler" checked="@(_role == Role.User)">
-            <label class="form-check-label" for="userRole">@Role.User</label>
+            <input id="userRole" type="radio" class="form-check-input" name="role" value="@Role.Staff"
+                @onchange="RoleChangeHandler" checked="@(_role == Role.Staff)">
+            <label class="form-check-label" for="userRole">@Role.Staff</label>
         </div>
         <div class="form-check">
             <input id="adminRole" type="radio" class="form-check-input" name="role" value="@Role.Admin"
@@ -104,7 +106,7 @@
         _showAddUserDialog = true;
         _username = "";
         _password = "";
-        _role = Role.User;
+        _role = Role.Staff;
     }
     private void OnAddUserDialogClose(bool isCancel)
     {
@@ -151,7 +153,7 @@
             try
             {
                 _deleteUserErrorMessage = "";
-               // _users = UsersService.Delete(_deleteUser.Id);
+                _users = UsersService.Delete(_deleteUser.Id);
                 _showDeleteUserDialog = false;
                 _deleteUser = null;
             }

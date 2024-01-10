@@ -7,6 +7,6 @@ using System.Threading.Tasks;
 namespace BCafe.Data;
 public enum Role
 {
-    User,
+    Staff,
     Admin
 }

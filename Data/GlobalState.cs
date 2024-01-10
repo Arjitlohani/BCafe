@@ -9,5 +9,6 @@ namespace BCafe.Data
     internal class GlobalState
     {
         public User CurrentUser { get; set; }
+        public Coffee UserName { get; set; }
     }
 }

@@ -1,0 +1,105 @@
+﻿@using BCafe.Data
+@page "/AddIns"
+
+<h1>Add-Ins</h1>
+<button class="btn btn-primary" @onclick="ShowAddAddinModal">Add Add-In</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var addin in addins)
+        {
+            <tr>
+                <td>@addin.Id</td>
+                <td>@addin.Name</td>
+                <td>RS. @addin.Price.ToString("N2")</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="() => EditAddin(addin)">Edit</button>
+                    <button class="btn btn-danger" @onclick="() => DeleteAddin(addin.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (showModal)
+{
+    <div class="modal" style="display:block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="close" @onclick="CloseModal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control mb-2" placeholder="Name" @bind="editingAddin.Name" />
+                    <input type="number" class="form-control" placeholder="Price" @bind="editingAddin.Price" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SaveAddin">Save</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AddIn> addins = new();
+    private bool showModal = false;
+    private AddIn editingAddin = new();
+    private string modalTitle = "Add Add-In";
+
+    protected override void OnInitialized()
+    {
+        addins = AddInsService.GetAll();
+    }
+
+    private void ShowAddAddinModal()
+    {
+        editingAddin = new AddIn();
+        modalTitle = "Add Add-In";
+        showModal = true;
+    }
+
+    private void EditAddin(AddIn addin)
+    {
+        editingAddin = addin;
+        modalTitle = "Edit Add-In";
+        showModal = true;
+    }
+
+    private void SaveAddin()
+    {
+        if (editingAddin.Id == 0)
+        {
+            AddInsService.AddAddin(editingAddin);
+        }
+        else
+        {
+            AddInsService.UpdateAddin(editingAddin);
+        }
+        addins = AddInsService.GetAll();
+        CloseModal();
+    }
+
+    private void DeleteAddin(int addinId)
+    {
+        AddInsService.DeleteAddin(addinId);
+        addins = AddInsService.GetAll();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}

@@ -73,22 +73,22 @@ public static class UsersService
         return users.FirstOrDefault(x => x.Id == id);
     }
 
-    //public static List<User> Delete(Guid id)
-    //{
-    //    List<User> users = GetAll();
-    //    User user = users.FirstOrDefault(x => x.Id == id);
+    public static List<User> Delete(Guid id)
+    {
+        List<User> users = GetAll();
+        User user = users.FirstOrDefault(x => x.Id == id);
 
-    //    if (user == null)
-    //    {
-    //        throw new Exception("User not found.");
-    //    }
+        if (user == null)
+        {
+            throw new Exception("User not found.");
+        }
 
-    //    TodosService.DeleteByUserId(id);
-    //    users.Remove(user);
-    //    SaveAll(users);
+        OrderService.DeleteByUserId(id);
+        users.Remove(user);
+        SaveAll(users);
 
-    //    return users;
-    //}
+        return users;
+    }
 
     public static User Login(string username, string password)
     {

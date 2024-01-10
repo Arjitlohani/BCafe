@@ -56,8 +56,7 @@ public static class Utils
         return Path.Combine(GetAppDirectoryPath(), "users.json");
     }
 
-    public static string GetTodosFilePath(Guid userId)
-    {
-        return Path.Combine(GetAppDirectoryPath(), userId.ToString() + "_todos.json");
-    }
+  
+
+
 }

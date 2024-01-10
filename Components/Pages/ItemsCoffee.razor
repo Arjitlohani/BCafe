@@ -1,0 +1,105 @@
+﻿@using BCafe.Data
+@page "/ItemsCoffee"
+
+<h1>Coffees</h1>
+<button class="btn btn-primary" @onclick="ShowAddCoffeeModal">Add Coffee</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Product Name</th>
+            <th>Price</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var coffee in coffees)
+        {
+            <tr>
+                <td>@coffee.Id</td>
+                <td>@coffee.ProductName</td>
+                <td>RS. @coffee.Price.ToString("N2")</td>
+                <td>
+                    <button class="btn btn-primary" @onclick="() => EditCoffee(coffee)">Edit</button>
+                    <button class="btn btn-danger" @onclick="() => DeleteCoffee(coffee.Id)">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@if (showModal)
+{
+    <div class="modal" style="display:block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="close" @onclick="CloseModal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control mb-2" placeholder="Product Name" @bind="editingCoffee.ProductName" />
+                    <input type="number" class="form-control" placeholder="Price" @bind="editingCoffee.Price" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="SaveCoffee">Save</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Coffee> coffees = new();
+    private bool showModal = false;
+    private Coffee editingCoffee = new();
+    private string modalTitle = "Add Coffee";
+
+    protected override void OnInitialized()
+    {
+        coffees = CoffeeService.GetAll();
+    }
+
+    private void ShowAddCoffeeModal()
+    {
+        editingCoffee = new Coffee();
+        modalTitle = "Add Coffee";
+        showModal = true;
+    }
+
+    private void EditCoffee(Coffee coffee)
+    {
+        editingCoffee = coffee;
+        modalTitle = "Edit Coffee";
+        showModal = true;
+    }
+
+    private void SaveCoffee()
+    {
+        if (editingCoffee.Id == 0)
+        {
+            CoffeeService.AddCoffee(editingCoffee);
+        }
+        else
+        {
+            CoffeeService.UpdateCoffee(editingCoffee);
+        }
+        coffees = CoffeeService.GetAll();
+        CloseModal();
+    }
+    private void DeleteCoffee(int coffeeId)
+    {
+        CoffeeService.DeleteCoffee(coffeeId);
+        coffees = CoffeeService.GetAll();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+}
